@@ -1,0 +1,121 @@
+{
+    "ApplicationName": "opcUaServer",
+    "ApplicationUri": "urn:localhost:UA:opcUaServer",
+    "ProductUri": null,
+    "ApplicationType": 0,
+    "SecurityConfiguration": {
+      "ApplicationCertificate": {
+        "StoreType": "Directory",
+        "StorePath": "%CommonApplicationData%\\071\\CertificateStores\\MachineDefault",
+        "SubjectName": "CN=opcUaServer, DC=LX510021"
+      },
+      "TrustedIssuerCertificates": {
+        "TrustedCertificates": []
+      },
+      "TrustedPeerCertificates": {
+        "StoreType": "StoreType",
+        "StorePath": "%CommonApplicationData%\\071\\CertificateStores\\UA Applications",
+        "TrustedCertificates": []
+      },
+      "NonceLength": 32,
+      "AutoAcceptUntrustedCertificates": true,
+      "UserRoleDirectory": null,
+      "RejectSHA1SignedCertificates": true,
+      "MinimumCertificateKeySize": 2048
+    },
+    "TransportConfigurations": [],
+    "TransportQuotas": {
+      "OperationTimeout": 600000,
+      "MaxStringLength": 1048576,
+      "MaxByteStringLength": 1048576,
+      "MaxArrayLength": 65535,
+      "MaxMessageSize": 4194304,
+      "MaxBufferSize": 65535,
+      "ChannelLifetime": 300000,
+      "SecurityTokenLifetime": 3600000
+    },
+    "ServerConfiguration": {
+      "BaseAddresses": [
+        "opc.tcp://localhost:62541/opcUaServer"
+      ],
+      "AlternateBaseAddresses": [
+        "ocp.tcp://localhost:4841/opcUaServer"
+      ],
+      "SecurityPolicies": [
+        {
+          "SecurityMode": 1,
+          "SecurityPolicyUri": "http://opcfoundation.org/UA/SecurityPolicy#None"
+        }
+      ],
+      "UserTokenPolicies": [
+        {
+          "PolicyId": null,
+          "TokenType": 0,
+          "IssuedTokenType": null,
+          "IssuerEndpointUrl": null,
+          "SecurityPolicyUri": null
+        }
+      ],
+      "MinRequestThreadCount": 10,
+      "DiagnosticsEnabled": true,
+      "MaxRequestThreadCount": 100,
+      "MaxSessionCount": 100,
+      "MaxQueuedRequestCount": 200,
+      "MinSessionTimeout": 5000,
+      "MaxSessionTimeout": 10000,
+      "MaxBrowseContinuationPoints": 10,
+      "MaxQueryContinuationPoints": 10,
+      "MaxHistoryContinuationPoints": 100,
+      "MaxRequestAge": 600000,
+      "MinPublishingInterval": 100,
+      "MaxPublishingInterval": 3600000,
+      "PublishingResolution": 50,
+      "MaxSubscriptionLifetime": 3600000,
+      "MaxMessageQueueSize": 10,
+      "MaxNotificationQueueSize": 100,
+      "MaxNotificationsPerPublish": 1000,
+      "MinMetadataSamplingInterval": 1000,
+      "AvailableSamplingRates": [],
+      "RegistrationEndpoint": {
+        "EndpointUrl": "opc.tcp://localhost:4841",
+        "Server": {
+          "ApplicationUri": "opc.tcp://localhost:4841",
+          "ProductUri": null,
+          "ApplicationName": null,
+          "ApplicationType": 3,
+          "GatewayServerUri": null,
+          "DiscoveryProfileUri": null,
+          "DiscoveryUrls": [
+            "opc.tcp://localhost:4841"
+          ]
+        },
+        "ServerCertificate": null,
+        "SecurityMode": 1,
+        "SecurityPolicyUri": "",
+        "UserIdentityTokens": [],
+        "TransportProfileUri": null,
+        "SecurityLevel": 0
+      },
+      "MaxRegistrationInterval": 30000,
+      "NodeManagerSaveFile": null,
+      "MinSubscriptionLifetime": 10000,
+      "MaxPublishRequestCount": 20,
+      "MaxSubscriptionCount": 100,
+      "MaxEventQueueSize": 10000,
+      "ServerProfileArray": [
+        "http://opcfoundation.org/UA-Profile/Server/StandardUA2017"
+      ],
+      "ShutdownDelay": 5,
+      "ServerCapabilities": [
+        "DA"
+      ],
+      "SupportedPrivateKeyFormats": [
+        "PFX",
+        "PEM"
+      ],
+      "MaxTrustListSize": 0,
+      "MultiCastDnsEnabled": false,
+      "ReverseConnect": null,
+      "OperationLimits": null
+    }
+  }
