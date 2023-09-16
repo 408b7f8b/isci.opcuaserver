@@ -34,13 +34,13 @@ namespace isci.opcuaserver
                     ApplicationCertificate = new CertificateIdentifier
                     {
                         StoreType = @"Directory",
-                        StorePath = @"%CommonApplicationData%\071\CertificateStores\MachineDefault",
+                        StorePath = @"CertificateStores/MachineDefault",
                         SubjectName = Utils.Format(@"CN={0}, DC={1}", name, System.Net.Dns.GetHostName())
                     },
                     TrustedPeerCertificates = new CertificateTrustList
                     {
                         StoreType = @"StoreType", 
-                        StorePath = @"%CommonApplicationData%\071\CertificateStores\UA Applications"
+                        StorePath = @"CertificateStores/UA Applications"
                     },
                     NonceLength = 32, 
                     AutoAcceptUntrustedCertificates = true,
@@ -119,26 +119,40 @@ namespace isci.opcuaserver
 
             return application;
         }
-        public OpcUaServer()
-        {
-            if (application == null)
-            {
-                
-            }
-            
-            var resval = application.Validate(ApplicationType.Server);
-            //application.EnsureApplicationCertificate();
-            var d = application.GetServerDomainNames();
-        }
 
-        public OpcUaServer(ApplicationConfiguration application, string name = "opcUaServer")
+        public OpcUaServer(ApplicationConfiguration application = null, string name = "opcUaServer")
         {
             this.name = name;
-            this.application = application;
+            this.application = (application != null ? application : standardApplicationConfiguration(name));
 
-            var resval = application.Validate(ApplicationType.Server);
-            //application.EnsureApplicationCertificate();
-            var d = application.GetServerDomainNames();
+            var instanz = new Opc.Ua.Configuration.ApplicationInstance(this.application);
+
+            var tsk = instanz.CheckApplicationInstanceCertificate(false, 1024);
+            tsk.Wait();
+
+            //var createTask = Opc.Ua.Configuration.CreateApplicationInstanceCertificate(this.application, 128, 12);
+
+
+
+            var resval = this.application.Validate(ApplicationType.Server);
+
+            resval.Wait();
+
+            
+            var d = this.application.GetServerDomainNames();
+        }
+
+        public void makeCert()
+        {
+             System.Security.Cryptography.X509Certificates.X509Certificate2 certificate = CertificateFactory.CreateCertificate(
+               "urn:localhost:UA:Quickstarts:ReferenceServer",
+               "Quickstart Reference Server",
+               "CN=Quickstart Reference Server, C=US, S=Arizona, O=OPC Foundation, DC=localhost",
+               new List<string> { Utils.GetHostName() })
+               .SetLifeTime(24)
+               .SetRSAKeySize(2048)
+               .CreateForRSA();
+
         }
 
         public void Start()
@@ -216,11 +230,13 @@ namespace isci.opcuaserver
             }
 
             if (top != "")
+            {
                 if (!hinzugefügt.Contains(top) && top != "ns=0;i=85")
                 {
                     nodeHinzufügen(coll, top);
                 }
-        
+                node.ParentNodeId = new ExpandedNodeId(top);
+            }        
 
             WriteLine($"Trage {node.BrowseName} als {node.RequestedNewNodeId.ToString()} ein ");
             coll.Add(node);
