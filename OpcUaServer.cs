@@ -16,6 +16,9 @@ namespace isci.opcuaserver
 
         [Newtonsoft.Json.JsonIgnore]
         private List<string> hinzugefügt = new List<string>();
+        [Newtonsoft.Json.JsonIgnore]
+        public Dictionary<string, object> puffer = new Dictionary<string, object>();
+        public bool puffer_mutex = false;
         
         public void WriteLine(string content)
         {
@@ -39,12 +42,12 @@ namespace isci.opcuaserver
                     },
                     TrustedPeerCertificates = new CertificateTrustList
                     {
-                        StoreType = @"StoreType", 
+                        StoreType = @"Directory", 
                         StorePath = @"CertificateStores/UA Applications"
                     },
                     NonceLength = 32, 
                     AutoAcceptUntrustedCertificates = true,
-                    //AddAppCertToTrustedStore = false
+                    AddAppCertToTrustedStore = false
                 },
                 TransportConfigurations = new TransportConfigurationCollection(),
                 TransportQuotas = new TransportQuotas()
@@ -128,7 +131,15 @@ namespace isci.opcuaserver
             var instanz = new Opc.Ua.Configuration.ApplicationInstance(this.application);
 
             var tsk = instanz.CheckApplicationInstanceCertificate(false, 1024);
-            tsk.Wait();
+            try {
+                tsk.Wait();
+            } catch {
+                var tsk2 = instanz.DeleteApplicationInstanceCertificate();
+                tsk2.Wait();
+                tsk = instanz.CheckApplicationInstanceCertificate(false, 1024);
+                tsk.Wait();
+            }
+            
 
             //var createTask = Opc.Ua.Configuration.CreateApplicationInstanceCertificate(this.application, 128, 12);
 
@@ -140,19 +151,6 @@ namespace isci.opcuaserver
 
             
             var d = this.application.GetServerDomainNames();
-        }
-
-        public void makeCert()
-        {
-             System.Security.Cryptography.X509Certificates.X509Certificate2 certificate = CertificateFactory.CreateCertificate(
-               "urn:localhost:UA:Quickstarts:ReferenceServer",
-               "Quickstart Reference Server",
-               "CN=Quickstart Reference Server, C=US, S=Arizona, O=OPC Foundation, DC=localhost",
-               new List<string> { Utils.GetHostName() })
-               .SetLifeTime(24)
-               .SetRSAKeySize(2048)
-               .CreateForRSA();
-
         }
 
         public void Start()
@@ -175,6 +173,8 @@ namespace isci.opcuaserver
 
         public void nodeHinzufügen(AddNodesItemCollection coll, string key)
         {
+            if (hinzugefügt.Contains(key)) return;
+
             var node = new AddNodesItem();
             node.NodeAttributes = new ExtensionObject(
                 new Opc.Ua.VariableAttributes()
@@ -211,22 +211,24 @@ namespace isci.opcuaserver
                 }
 
                 node.BrowseName = item.getName();
-                node.RequestedNewNodeId = new ExpandedNodeId(item.getFullname(), 2);
+                node.RequestedNewNodeId = new ExpandedNodeId(item.getFullname(), 3);
 
                 top = item.getTop();
             } else {
                 node.NodeClass = NodeClass.Object;
                 node.TypeDefinition = DataTypeIds.ObjectNode;
 
-                node.BrowseName = key.Substring(0, key.LastIndexOf('.'));;
-                node.RequestedNewNodeId = new ExpandedNodeId(key.Substring(key.LastIndexOf('=')+1), 2);
+                node.BrowseName = (key.Contains('.')) ? key.Substring(key.LastIndexOf('.')+1) : key.Substring(key.LastIndexOf('=')+1);
+                node.RequestedNewNodeId = new ExpandedNodeId(key.Substring(key.LastIndexOf('=')+1), 3);
 
-                if (key.Contains('.'))
+                top = "ns=0;i=85";
+
+                /*if (key.Contains('.'))
                 {
                     top = key.Substring(0, key.LastIndexOf('.'));
                 } else {
                     top = "ns=0;i=85";
-                }
+                }*/
             }
 
             if (top != "")
@@ -234,6 +236,7 @@ namespace isci.opcuaserver
                 if (!hinzugefügt.Contains(top) && top != "ns=0;i=85")
                 {
                     nodeHinzufügen(coll, top);
+                    hinzugefügt.Add(top);
                 }
                 node.ParentNodeId = new ExpandedNodeId(top);
             }        
@@ -290,8 +293,8 @@ namespace isci.opcuaserver
                     var item = Struktur.dateneinträge[Ausstehend[i]];
                     this.nodeHinzufügen(r, Ausstehend[i]);
 
-                    Ausstehend.RemoveAt(i);
                     hinzugefügt.Add(Ausstehend[i]);
+                    Ausstehend.RemoveAt(i);                    
                 }
             }
 
@@ -314,7 +317,7 @@ namespace isci.opcuaserver
 
         public void WriteInternal(string ident, object value)
         {
-            var nodeId = new NodeId(ident, 3);
+            var nodeId = NodeId.Parse(ident);
             var node = ServerInternal.CoreNodeManager.GetLocalNode(nodeId);
             if (node == null) return;
             node.Write(Attributes.Value, new DataValue(new Variant(value)));
@@ -334,20 +337,36 @@ namespace isci.opcuaserver
                     var node = ServerInternal.CoreNodeManager.GetLocalNode(item.NodeId);
                     node.Write(Attributes.Value, item.Value);
 
-                    var dateneintrag = Struktur.dateneinträge[item.NodeId.ToString()];
+                    var id = item.NodeId.ToString();
+
+                    while(puffer_mutex)
+                    {
+
+                    }
+
+                    puffer_mutex = true;
+
+                    if (!puffer.ContainsKey(id))
+                    {
+                        puffer.Add(id, new object());
+                    }
+
+                    var dateneintrag = Struktur.dateneinträge[id];
                     switch (dateneintrag.type)
                     {
-                        case Datentypen.UInt8: dateneintrag.value = item.Value.GetValue(typeof(System.Byte)); break;
-                        case Datentypen.UInt16: dateneintrag.value = item.Value.GetValue(typeof(System.UInt16)); break;
-                        case Datentypen.UInt32: dateneintrag.value = item.Value.GetValue(typeof(System.UInt32)); break;
-                        case Datentypen.Int8: dateneintrag.value = item.Value.GetValue(typeof(System.SByte)); break;
-                        case Datentypen.Int16: dateneintrag.value = item.Value.GetValue(typeof(System.Int16)); break;
-                        case Datentypen.Int32: dateneintrag.value = item.Value.GetValue(typeof(System.Int32)); break;
-                        case Datentypen.Bool: dateneintrag.value = item.Value.GetValue(typeof(System.Boolean)); break;
-                        case Datentypen.Float: dateneintrag.value = item.Value.GetValue(typeof(float)); break;
-                        case Datentypen.Double: dateneintrag.value = item.Value.GetValue(typeof(System.Double)); break;
-                        case Datentypen.String: dateneintrag.value = item.Value.GetValue(typeof(System.String)); break;
+                        case Datentypen.UInt8: puffer[id] = item.Value.GetValue(typeof(System.Byte)); break;
+                        case Datentypen.UInt16: puffer[id] = item.Value.GetValue(typeof(System.UInt16)); break;
+                        case Datentypen.UInt32: puffer[id] = item.Value.GetValue(typeof(System.UInt32)); break;
+                        case Datentypen.Int8: puffer[id] = item.Value.GetValue(typeof(System.SByte)); break;
+                        case Datentypen.Int16: puffer[id] = item.Value.GetValue(typeof(System.Int16)); break;
+                        case Datentypen.Int32: puffer[id]= item.Value.GetValue(typeof(System.Int32)); break;
+                        case Datentypen.Bool: puffer[id] = item.Value.GetValue(typeof(System.Boolean)); break;
+                        case Datentypen.Float: puffer[id] = item.Value.GetValue(typeof(float)); break;
+                        case Datentypen.Double: puffer[id] = item.Value.GetValue(typeof(System.Double)); break;
+                        case Datentypen.String: puffer[id] = item.Value.GetValue(typeof(System.String)); break;
                     }
+
+                    puffer_mutex = false;
 
                     results.Add(StatusCodes.Good);
                 } catch {
