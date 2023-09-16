@@ -196,7 +196,7 @@ namespace isci.opcuaserver
                 var item = Struktur.dateneinträge[key];
 
                 node.NodeClass = NodeClass.Variable;
-                switch (item.type)
+                /*switch (item.type)
                 {
                     case Datentypen.UInt8: node.TypeDefinition = DataTypeIds.Byte; break;
                     case Datentypen.UInt16: node.TypeDefinition = DataTypeIds.UInt16; break;
@@ -208,7 +208,7 @@ namespace isci.opcuaserver
                     case Datentypen.Float: node.TypeDefinition = DataTypeIds.Float; break;
                     case Datentypen.Double: node.TypeDefinition = DataTypeIds.Double; break;
                     case Datentypen.String: node.TypeDefinition = DataTypeIds.String; break;
-                }
+                }*/
 
                 node.BrowseName = item.getName();
                 node.RequestedNewNodeId = new ExpandedNodeId(item.getFullname(), 3);
@@ -396,6 +396,8 @@ namespace isci.opcuaserver
                 if (item.NodeClass == NodeClass.Variable)
                 {
                     var ident = item.RequestedNewNodeId.ToString();
+
+                    var struktur_item = Struktur.dateneinträge[ident];
                     
                     var node = new VariableNode
                     {
@@ -403,7 +405,6 @@ namespace isci.opcuaserver
                         DisplayName = new LocalizedText(item.BrowseName.Name),
                         References = new ReferenceNodeCollection(){ },
                         BrowseName = item.BrowseName,
-                        DataType = new NodeId(item.TypeDefinition.Identifier, item.TypeDefinition.NamespaceIndex),
                         Description = new LocalizedText(""),
                         NodeClass = NodeClass.Variable,
                         AccessLevel = ((Opc.Ua.VariableAttributes)item.NodeAttributes.Body).AccessLevel,
@@ -411,6 +412,20 @@ namespace isci.opcuaserver
                         //Value = new Variant(((HESTA.Architektur.Strukturen.Datenstruktur)requestHeader.AdditionalHeader.Body)[item.RequestedNewNodeId.Identifier.ToString()].Wert)
                         Value = new Variant(Struktur.dateneinträge[ident].value)
                     };
+
+                    switch (struktur_item.type)
+                    {
+                        case Datentypen.UInt8: node.DataType = DataTypeIds.Byte; break;
+                        case Datentypen.UInt16: node.DataType = DataTypeIds.UInt16; break;
+                        case Datentypen.UInt32: node.DataType = DataTypeIds.UInt32; break;
+                        case Datentypen.Int8: node.DataType = DataTypeIds.SByte; break;
+                        case Datentypen.Int16: node.DataType = DataTypeIds.Int16; break;
+                        case Datentypen.Int32: node.DataType = DataTypeIds.Int32; break;
+                        case Datentypen.Bool: node.DataType = DataTypeIds.Boolean; break;
+                        case Datentypen.Float: node.DataType = DataTypeIds.Float; break;
+                        case Datentypen.Double: node.DataType = DataTypeIds.Double; break;
+                        case Datentypen.String: node.DataType = DataTypeIds.String; break;
+                    }
 
                     //m_serverInternal.CoreNodeManager.AttachNode(node);
                     ServerInternal.CoreNodeManager.AttachNode(node);
