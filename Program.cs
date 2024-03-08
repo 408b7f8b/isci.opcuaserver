@@ -25,10 +25,12 @@ namespace isci.opcuaserver
             var structure = new Datenstruktur(konfiguration);
             var ausfuehrungsmodell = new Ausführungsmodell(konfiguration, structure.Zustand);
 
-            var beschreibung = new Modul(konfiguration.Identifikation, "isci.opcauserver", new ListeDateneintraege(){});
-            beschreibung.Name = "OPC-UA-Server Ressource " + konfiguration.Identifikation;
-            beschreibung.Beschreibung = "OPC-UA-Server";
-            beschreibung.Speichern(konfiguration.OrdnerBeschreibungen + "/" + konfiguration.Identifikation + ".json");
+            var beschreibung = new Modul(konfiguration.Identifikation, "isci.opcauserver")
+            {
+                Name = "OPC-UA-Server Ressource " + konfiguration.Identifikation,
+                Beschreibung = "OPC-UA-Server"
+            };
+            beschreibung.Speichern(konfiguration);
 
             structure.DatenmodelleEinhängenAusOrdner(konfiguration.OrdnerDatenmodelle);
             structure.Start();
@@ -89,6 +91,8 @@ namespace isci.opcuaserver
                     structure.Zustand++;
                     structure.Zustand.WertInSpeicherSchreiben();
                 }
+
+                Helfer.SleepForMicroseconds(konfiguration.PauseArbeitsschleifeUs);
             }
         }
     }
