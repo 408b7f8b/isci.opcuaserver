@@ -11,7 +11,7 @@ namespace isci.opcuaserver
 {
     public class Konfiguration : Parameter
     {
-        public Konfiguration(string datei) : base(datei) {
+        public Konfiguration(string[] args) : base(args) {
 
         }
     }
@@ -20,9 +20,10 @@ namespace isci.opcuaserver
     {
         static void Main(string[] args)
         {
-            var konfiguration = new Konfiguration("konfiguration.json");
-            
-            var structure = new Datenstruktur(konfiguration.OrdnerDatenstruktur);
+            var konfiguration = new Konfiguration(args);
+
+            var structure = new Datenstruktur(konfiguration);
+            var ausfuehrungsmodell = new Ausführungsmodell(konfiguration, structure.Zustand);
 
             var beschreibung = new Modul(konfiguration.Identifikation, "isci.opcauserver", new ListeDateneintraege(){});
             beschreibung.Name = "OPC-UA-Server Ressource " + konfiguration.Identifikation;
@@ -32,92 +33,61 @@ namespace isci.opcuaserver
             structure.DatenmodelleEinhängenAusOrdner(konfiguration.OrdnerDatenmodelle);
             structure.Start();
 
-            var Zustand = new dtZustand(konfiguration.OrdnerDatenstruktur);
-            Zustand.Start();
-
-            var server = new OpcUaServer();
+            var server = new OpcUaServer()
+            {
+                name = konfiguration.Anwendung
+            };
             server.StrukturEintragen(structure);
             server.Start();
             server.DatenstrukturAufbauen();
 
-            if (konfiguration.Ausführungstransitionen != null)
+            while (true)
             {
-                while(true)
+                structure.Zustand.WertAusSpeicherLesen();
+
+                if (ausfuehrungsmodell.AktuellerZustandModulAktivieren())
                 {
-                    System.Threading.Thread.Sleep(1000);
+                    var schritt_param = ausfuehrungsmodell.ParameterAktuellerZustand();
 
-                    Zustand.Lesen();
-
-                    var erfüllteTransitionen = konfiguration.Ausführungstransitionen.Where(a => a.Eingangszustand == (System.Int32)Zustand.value);
-                    if (erfüllteTransitionen.Count<Ausführungstransition>() <= 0) continue;
-
-                    if (erfüllteTransitionen.ElementAt(0) == konfiguration.Ausführungstransitionen[0])
+                    switch (schritt_param)
                     {
-                        while (server.puffer_mutex)
+                        case "E":
                         {
+                            while (server.puffer_mutex)
+                            {
 
-                        }
+                            }
 
-                        server.puffer_mutex = true;
+                            server.puffer_mutex = true;
 
-                        foreach (var neuer_wert in server.puffer)
+                            foreach (var neuer_wert in server.puffer)
+                            {
+                                structure.dateneinträge[neuer_wert.Key].Wert = neuer_wert.Value;
+                            }
+
+                            server.puffer.Clear();
+
+                            server.puffer_mutex = false;
+
+                            structure.Schreiben();
+                            break;
+                            }
+                        case "A":
                         {
-                            structure.dateneinträge[neuer_wert.Key].value = neuer_wert.Value;
+                            var aenderungen = structure.Lesen();
+
+                            foreach (var geandert in aenderungen)
+                            {
+                                server.DatenwertVerbreiten(geandert);
+                            }
+
+                            structure.AenderungenZuruecksetzen(aenderungen);
+                            break;
                         }
-
-                        server.puffer.Clear();
-
-                        server.puffer_mutex = false;
-
-                        structure.Schreiben();
-                    } else if (erfüllteTransitionen.ElementAt(0) == konfiguration.Ausführungstransitionen[1])
-                    {
-                        var aenderungen = structure.Lesen();                    
-
-                        foreach (var geandert in aenderungen)
-                        {
-                            server.DatenwertVerbreiten(geandert);
-                        }
-
-                        structure.AenderungenZuruecksetzen(aenderungen);
                     }
 
-                    Zustand.value = erfüllteTransitionen.First<Ausführungstransition>().Ausgangszustand;
-                    Zustand.Schreiben();
-                }
-            } else {
-                while(true)
-                {
-                    System.Threading.Thread.Sleep(50);
-
-                    while (server.puffer_mutex)
-                    {
-
-                    }
-
-                    server.puffer_mutex = true;
-
-                    foreach (var neuer_wert in server.puffer)
-                    {
-                        structure.dateneinträge[neuer_wert.Key].value = neuer_wert.Value;
-                    }
-
-                    server.puffer.Clear();
-
-                    server.puffer_mutex = false;
-
-                    structure.Schreiben();
-
-                    System.Threading.Thread.Sleep(50);
-
-                    var aenderungen = structure.Lesen();                    
-
-                    foreach (var geandert in aenderungen)
-                    {
-                        server.DatenwertVerbreiten(geandert);
-                    }
-
-                    structure.AenderungenZuruecksetzen(aenderungen);
+                    structure.Zustand++;
+                    structure.Zustand.WertInSpeicherSchreiben();
                 }
             }
         }

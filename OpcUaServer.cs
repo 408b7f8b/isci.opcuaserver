@@ -210,36 +210,31 @@ namespace isci.opcuaserver
                     case Datentypen.String: node.TypeDefinition = DataTypeIds.String; break;
                 }*/
 
-                node.BrowseName = item.getName();
-                node.RequestedNewNodeId = new ExpandedNodeId(item.getFullname(), 3);
+                node.BrowseName = item.Identifikation.Split('.').Last();
+                node.RequestedNewNodeId = new ExpandedNodeId(item.Identifikation, 3);
 
-                top = item.getTop();
+                top = "ns=3;s=" + item.Identifikation.Substring(0, item.Identifikation.LastIndexOf('.'));
             } else {
                 node.NodeClass = NodeClass.Object;
                 node.TypeDefinition = DataTypeIds.ObjectNode;
 
-                node.BrowseName = (key.Contains('.')) ? key.Substring(key.LastIndexOf('.')+1) : key.Substring(key.LastIndexOf('=')+1);
-                node.RequestedNewNodeId = new ExpandedNodeId(key.Substring(key.LastIndexOf('=')+1), 3);
+                node.BrowseName = key.Contains('.') ? key.Split('.').Last() : key;
+                node.RequestedNewNodeId = new ExpandedNodeId(key, 3);
 
-                top = "ns=0;i=85";
-
-                /*if (key.Contains('.'))
+                if (key.Contains('.'))
                 {
-                    top = key.Substring(0, key.LastIndexOf('.'));
+                    top = "ns=3;s=" + key.Substring(0, key.LastIndexOf('.'));
                 } else {
                     top = "ns=0;i=85";
-                }*/
-            }
-
-            if (top != "")
-            {
-                if (!hinzugefügt.Contains(top) && top != "ns=0;i=85")
-                {
-                    nodeHinzufügen(coll, top);
-                    hinzugefügt.Add(top);
                 }
-                node.ParentNodeId = new ExpandedNodeId(top);
-            }        
+            }
+            
+            if (!hinzugefügt.Contains(top) && top != "ns=0;i=85")
+            {
+                nodeHinzufügen(coll, top);
+                hinzugefügt.Add(top);
+            }
+            node.ParentNodeId = new ExpandedNodeId(top); 
 
             WriteLine($"Trage {node.BrowseName} als {node.RequestedNewNodeId.ToString()} ein ");
             coll.Add(node);
@@ -312,7 +307,7 @@ namespace isci.opcuaserver
         public void DatenwertVerbreiten(string feld)
         {
             var datenfeld = Struktur.dateneinträge[feld];
-            WriteInternal(datenfeld.Identifikation, datenfeld.value);
+            WriteInternal(datenfeld.Identifikation, datenfeld.Wert);
         }
 
         public void WriteInternal(string ident, object value)
@@ -410,7 +405,7 @@ namespace isci.opcuaserver
                         AccessLevel = ((Opc.Ua.VariableAttributes)item.NodeAttributes.Body).AccessLevel,
                         UserAccessLevel = ((Opc.Ua.VariableAttributes)item.NodeAttributes.Body).UserAccessLevel,
                         //Value = new Variant(((HESTA.Architektur.Strukturen.Datenstruktur)requestHeader.AdditionalHeader.Body)[item.RequestedNewNodeId.Identifier.ToString()].Wert)
-                        Value = new Variant(Struktur.dateneinträge[ident].value)
+                        Value = new Variant(Struktur.dateneinträge[ident].Wert)
                     };
 
                     switch (struktur_item.type)
